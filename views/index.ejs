@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title><%= title %></title>
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+  <script src="/javascripts/htmlparser.js"></script>
+  <script src="/javascripts/he.js"></script>
+  <script>
+    //后端返回来的评论内容(html片段/纯文本) =》解码=》domparse
+    var parse = function (str) {
+      var results = "";
+
+      try {
+        //html, handler
+        //he解码反转译,严格模式;
+
+        let html = he.unescape(str, { strict: true });
+        console.log('html', html);
+        HTMLParser(html, {
+          start: function (tag, attrs, unary) {
+            //添加(标签)过滤,img
+            if (tag == 'script' || tag == "style" || tag == "link" || tag == "iframe") {
+              return;
+            }
+
+
+
+            results += "<" + tag;
+            //过滤属性 ,去看页面元素
+            // for (var i = 0; i < attrs.length; i++)
+            //   results += " " + attrs[i].name + '="' + attrs[i].escaped + '"';
+
+            results += ">";
+          },
+          end: function (tag) {
+            results += "</" + tag + ">";
+          },
+          chars: function (text) {
+            results += text;
+          },
+          comment: function (text) {
+            results += "<!--" + text + "-->";
+          }
+        })
+        return results
+      } catch (error) {
+        console.log(error);
+      } finally { }
+    }
+  </script>
+</head>
+
+<body>
+  <h1><%= title %></h1>
+  <p>Welcome to <%= title %></p>
+
+  <textarea name="name" id="txt" cols="80" rows="8"><p>评论xss</p><img src="null" alt="" onerror="alert(2)"></textarea>
+
+  <button id="btn">评论按钮</button>
+  <button id="get">获取评论</button>
+
+  <script>
+    var btn = document.getElementById('btn')
+    var get = document.getElementById('get')
+    var txt = document.getElementById('txt')
+
+    //点击评论按钮向服务端提交数据
+    btn.addEventListener('click', function () {
+      let xhr = new XMLHttpRequest();
+      let url = '/comment?comment=' + txt.value;
+      // console.log('url', url);
+
+      xhr.open('GET', url, true)
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4) {
+          console.log('点击评论按钮', xhr);
+        } else {
+          console.log('error');
+
+        }
+      }
+      xhr.send();
+    })
+
+
+    //点击获取评论按钮
+    get.addEventListener('click', function () {
+      let xhr = new XMLHttpRequest();
+      let url = '/getComment'
+      xhr.open('GET', url, true)
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4) {
+          console.log('获取评论内容', JSON.parse(xhr.response).comment);
+          //文本专程json对象,拿到comment
+          let com = parse(JSON.parse(xhr.response).comment);
+
+          let txt = document.createElement('sapn');
+          txt.innerHTML = com;
+          document.body.appendChild(txt)
+        } else {
+          console.log('error');
+
+        }
+      }
+      xhr.send();
+    })
+  </script>
+</body>
+
+</html>
